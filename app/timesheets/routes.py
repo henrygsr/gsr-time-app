@@ -7,6 +7,7 @@ from ..models.project import Project
 from ..utils.csv_utils import parse_patrot_csv
 from ..utils.pdf import render_pdf_from_template
 from ..utils.changes import log_change
+from ..utils.costing import assign_snapshot_cost
 import io, csv
 
 timesheets_bp = Blueprint('timesheets', __name__)
@@ -55,12 +56,10 @@ def import_csv():
             flash("No file uploaded.", "danger")
             return redirect(url_for('timesheets.import_csv'))
         totals = parse_patrot_csv(f)
-        # Store in session-like cache? For simplicity we reuse in client by recalculating on submit; here just echo
         return render_template('timesheets/import_result.html', totals=totals)
     return render_template('timesheets/import.html')
 
 def _daily_total_for_user(d):
-    # Sum of all projects for user/date (including None project)
     q = db.session.query(db.func.coalesce(db.func.sum(TimeEntry.hours), 0.0)).filter(
         TimeEntry.user_id==current_user.id, TimeEntry.work_date==d)
     return float(q.scalar() or 0.0)
@@ -94,15 +93,21 @@ def submit():
                 flash(f"Day {d} mismatch: Patriot {patriot[d]:.2f}h vs Entered {tot:.2f}h (tolerance {tol_hours:.2f}h). Fix before submitting.", "danger")
                 return redirect(url_for('timesheets.index'))
 
-    # Lock
+    # Snapshot cost & lock
     changed = 0
-    entries = (TimeEntry.query.filter(TimeEntry.user_id==current_user.id, TimeEntry.work_date.between(start, end)).all())
+    entries = (TimeEntry.query
+               .filter(TimeEntry.user_id==current_user.id, TimeEntry.work_date.between(start, end))
+               .all())
     for e in entries:
         if not e.is_submitted:
+            assign_snapshot_cost(e)  # persist cost snapshot on the entry
             e.is_submitted = True
             e.submitted_at = datetime.utcnow()
             changed += 1
-            log_change("timeentry", e.id, "submitted", {"date": str(e.work_date), "hours": e.hours})
+            log_change("timeentry", e.id, "submitted", {"date": str(e.work_date), "hours": e.hours,
+                                                        "rate": e.hourly_rate_applied,
+                                                        "burden": e.burden_percent_applied,
+                                                        "total_cost": e.total_cost})
     db.session.commit()
     flash(f"Submitted {changed} entries.", "success")
     return redirect(url_for('timesheets.index'))
