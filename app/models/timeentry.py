@@ -1,4 +1,4 @@
-from datetime import datetime, date
+from datetime import datetime
 from ..extensions import db
 
 class TimeEntry(db.Model):
@@ -12,3 +12,9 @@ class TimeEntry(db.Model):
     submitted_at = db.Column(db.DateTime, nullable=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    # Cost snapshot (set at submit time so wages/burden changes don't affect history)
+    hourly_rate_applied = db.Column(db.Float, nullable=True)
+    burden_percent_applied = db.Column(db.Float, nullable=True)
+    labor_cost = db.Column(db.Float, nullable=True)      # hours * hourly_rate_applied
+    total_cost = db.Column(db.Float, nullable=True)      # labor_cost * (1 + burden_percent_applied/100)
