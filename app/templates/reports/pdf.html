@@ -3,15 +3,37 @@
 <h2>Time Report</h2>
 <p>Range: {{start}} to {{end}}</p>
 <table border="1" cellspacing="0" cellpadding="4" width="100%">
-<tr><th>Date</th><th>Employee</th><th>Project</th><th>Hours</th><th>Submitted</th></tr>
-{% for e in entries %}
-<tr>
-  <td>{{ e.work_date }}</td>
-  <td>{{ e.user.username }}</td>
-  <td>{{ e.project.name if e.project else "Company Task" }}</td>
-  <td>{{ '%.2f'|format(e.hours) }}</td>
-  <td>{{ "Yes" if e.is_submitted else "No" }}</td>
-</tr>
-{% endfor %}
+  <tr>
+    <th>Date</th><th>Employee</th><th>Project</th><th>Hours</th>
+    {% if can_view_cost %}
+      <th>Rate</th><th>Burden %</th><th>Labor Cost</th><th>Total Cost</th>
+    {% endif %}
+    <th>Submitted</th>
+  </tr>
+  {% for e, c in rows %}
+  <tr>
+    <td>{{ e.work_date }}</td>
+    <td>{{ e.user.username }}</td>
+    <td>{{ e.project.name if e.project else "Company Task" }}</td>
+    <td style="text-align:right">{{ '%.2f'|format(e.hours) }}</td>
+    {% if can_view_cost %}
+      <td style="text-align:right">{{ '%.2f'|format(c.rate) }}</td>
+      <td style="text-align:right">{{ '%.2f'|format(c.burden_percent) }}</td>
+      <td style="text-align:right">{{ '%.2f'|format(c.labor_cost) }}</td>
+      <td style="text-align:right">{{ '%.2f'|format(c.total_cost) }}</td>
+    {% endif %}
+    <td>{{ "Yes" if e.is_submitted else "No" }}</td>
+  </tr>
+  {% endfor %}
+  <tr>
+    <td colspan="3" style="text-align:right"><strong>Totals:</strong></td>
+    <td style="text-align:right"><strong>{{ '%.2f'|format(sum_hours) }}</strong></td>
+    {% if can_view_cost %}
+      <td></td><td></td>
+      <td style="text-align:right"><strong>{{ '%.2f'|format(sum_labor_cost) }}</strong></td>
+      <td style="text-align:right"><strong>{{ '%.2f'|format(sum_total_cost) }}</strong></td>
+    {% endif %}
+    <td></td>
+  </tr>
 </table>
 </body></html>
