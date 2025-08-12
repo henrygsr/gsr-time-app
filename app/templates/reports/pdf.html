@@ -1,0 +1,17 @@
+<!doctype html>
+<html><body>
+<h2>Time Report</h2>
+<p>Range: {{start}} to {{end}}</p>
+<table border="1" cellspacing="0" cellpadding="4" width="100%">
+<tr><th>Date</th><th>Employee</th><th>Project</th><th>Hours</th><th>Submitted</th></tr>
+{% for e in entries %}
+<tr>
+  <td>{{ e.work_date }}</td>
+  <td>{{ e.user.username }}</td>
+  <td>{{ e.project.name if e.project else "Company Task" }}</td>
+  <td>{{ '%.2f'|format(e.hours) }}</td>
+  <td>{{ "Yes" if e.is_submitted else "No" }}</td>
+</tr>
+{% endfor %}
+</table>
+</body></html>

@@ -1,0 +1,23 @@
+{% extends 'base.html' %}
+{% block content %}
+<h3>Report Results</h3>
+<p>Range: {{start}} to {{end}}</p>
+<table class="table table-sm">
+  <thead><tr><th>Date</th><th>Employee</th><th>Project</th><th>Hours</th><th>Submitted</th></tr></thead>
+  <tbody>
+    {% for e in entries %}
+    <tr>
+      <td>{{ e.work_date }}</td>
+      <td>{{ e.user.username }}</td>
+      <td>{{ e.project.name if e.project else "Company Task" }}</td>
+      <td>{{ '%.2f'|format(e.hours) }}</td>
+      <td>{{ "Yes" if e.is_submitted else "No" }}</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+<div class="d-flex gap-2">
+  <a class="btn btn-outline-primary" href="{{ url_for('reports.export_csv', **request.args.to_dict()) }}">Download CSV</a>
+  <a class="btn btn-outline-primary" href="{{ url_for('reports.export_pdf', **request.args.to_dict()) }}">Download PDF</a>
+</div>
+{% endblock %}

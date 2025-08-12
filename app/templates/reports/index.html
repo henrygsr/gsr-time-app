@@ -1,1 +1,37 @@
-
+{% extends 'base.html' %}
+{% block content %}
+<h3>Reports</h3>
+<form method="get" action="{{ url_for('reports.results') }}" class="row g-2">
+  <div class="col-md-3">
+    <label>Start</label>
+    <input type="date" name="start" class="form-control" required>
+  </div>
+  <div class="col-md-3">
+    <label>End</label>
+    <input type="date" name="end" class="form-control" required>
+  </div>
+  <div class="col-md-3">
+    <label>Employee</label>
+    <select name="user_id" class="form-select">
+      <option value="">Any</option>
+      {% for u in users %}<option value="{{u.id}}">{{u.username}}</option>{% endfor %}
+    </select>
+  </div>
+  <div class="col-md-3">
+    <label>Project</label>
+    <select name="project_id" class="form-select">
+      <option value="">Any</option>
+      {% for p in projects %}<option value="{{p.id}}">{{p.name}}</option>{% endfor %}
+    </select>
+  </div>
+  <div class="col-12">
+    <div class="form-check">
+      <input class="form-check-input" type="checkbox" name="include_archived" value="1" id="ia">
+      <label class="form-check-label" for="ia">Include archived users/projects</label>
+    </div>
+  </div>
+  <div class="col-12 d-flex gap-2">
+    <button class="btn btn-primary">Run</button>
+  </div>
+</form>
+{% endblock %}
