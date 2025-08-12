@@ -1,1 +1,41 @@
-
+{% extends 'base.html' %}
+{% block content %}
+<h3>Projects</h3>
+<form method="post" action="{{ url_for('projects.create') }}" class="mb-3 d-flex gap-2">
+  <input name="name" class="form-control" placeholder="New project name">
+  <button class="btn btn-success">Add</button>
+</form>
+<div class="row">
+  <div class="col-md-6">
+    <h5>Active</h5>
+    <ul class="list-group">
+      {% for p in active %}
+      <li class="list-group-item d-flex justify-content-between align-items-center">
+        {{ p.name }}
+        <div>
+          <form method="post" action="{{ url_for('projects.archive', pid=p.id) }}" class="d-inline">
+            <button class="btn btn-sm btn-warning">Archive</button>
+          </form>
+          <form method="post" action="{{ url_for('projects.delete', pid=p.id) }}" class="d-inline">
+            <button class="btn btn-sm btn-danger">Delete</button>
+          </form>
+        </div>
+      </li>
+      {% endfor %}
+    </ul>
+  </div>
+  <div class="col-md-6">
+    <h5>Archived</h5>
+    <ul class="list-group">
+      {% for p in archived %}
+      <li class="list-group-item d-flex justify-content-between align-items-center">
+        {{ p.name }}
+        <form method="post" action="{{ url_for('projects.unarchive', pid=p.id) }}">
+          <button class="btn btn-sm btn-secondary">Unarchive</button>
+        </form>
+      </li>
+      {% endfor %}
+    </ul>
+  </div>
+</div>
+{% endblock %}
