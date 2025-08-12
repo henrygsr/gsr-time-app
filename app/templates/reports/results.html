@@ -2,20 +2,55 @@
 {% block content %}
 <h3>Report Results</h3>
 <p>Range: {{start}} to {{end}}</p>
+
 <table class="table table-sm">
-  <thead><tr><th>Date</th><th>Employee</th><th>Project</th><th>Hours</th><th>Submitted</th></tr></thead>
+  <thead>
+    <tr>
+      <th>Date</th>
+      <th>Employee</th>
+      <th>Project</th>
+      <th class="text-end">Hours</th>
+      {% if can_view_cost %}
+        <th class="text-end">Rate</th>
+        <th class="text-end">Burden %</th>
+        <th class="text-end">Labor Cost</th>
+        <th class="text-end">Total Cost</th>
+      {% endif %}
+      <th>Submitted</th>
+    </tr>
+  </thead>
   <tbody>
-    {% for e in entries %}
+    {% for e, c in rows %}
     <tr>
       <td>{{ e.work_date }}</td>
       <td>{{ e.user.username }}</td>
       <td>{{ e.project.name if e.project else "Company Task" }}</td>
-      <td>{{ '%.2f'|format(e.hours) }}</td>
+      <td class="text-end">{{ '%.2f'|format(e.hours) }}</td>
+      {% if can_view_cost %}
+        <td class="text-end">{{ '%.2f'|format(c.rate) }}</td>
+        <td class="text-end">{{ '%.2f'|format(c.burden_percent) }}</td>
+        <td class="text-end">{{ '%.2f'|format(c.labor_cost) }}</td>
+        <td class="text-end">{{ '%.2f'|format(c.total_cost) }}</td>
+      {% endif %}
       <td>{{ "Yes" if e.is_submitted else "No" }}</td>
     </tr>
     {% endfor %}
   </tbody>
+  <tfoot>
+    <tr class="fw-bold">
+      <td colspan="3" class="text-end">Totals:</td>
+      <td class="text-end">{{ '%.2f'|format(sum_hours) }}</td>
+      {% if can_view_cost %}
+        <td></td>
+        <td></td>
+        <td class="text-end">{{ '%.2f'|format(sum_labor_cost) }}</td>
+        <td class="text-end">{{ '%.2f'|format(sum_total_cost) }}</td>
+      {% endif %}
+      <td></td>
+    </tr>
+  </tfoot>
 </table>
+
 <div class="d-flex gap-2">
   <a class="btn btn-outline-primary" href="{{ url_for('reports.export_csv', **request.args.to_dict()) }}">Download CSV</a>
   <a class="btn btn-outline-primary" href="{{ url_for('reports.export_pdf', **request.args.to_dict()) }}">Download PDF</a>
