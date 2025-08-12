@@ -1,0 +1,17 @@
+<!doctype html>
+<html><body>
+<h2>My Time Entries</h2>
+<p>Range: {{start}} to {{end}}</p>
+<table border="1" cellspacing="0" cellpadding="4" width="100%">
+<tr><th>Date</th><th>Project</th><th>Hours</th><th>Notes</th><th>Submitted</th></tr>
+{% for e in entries %}
+<tr>
+  <td>{{ e.work_date }}</td>
+  <td>{{ e.project.name if e.project else "Company Task" }}</td>
+  <td>{{ '%.2f'|format(e.hours) }}</td>
+  <td>{{ e.notes }}</td>
+  <td>{{ "Yes" if e.is_submitted else "No" }}</td>
+</tr>
+{% endfor %}
+</table>
+</body></html>

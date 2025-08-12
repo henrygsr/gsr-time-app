@@ -1,0 +1,78 @@
+{% extends 'base.html' %}
+{% block content %}
+<h3>My Timesheets</h3>
+<p>Range: {{start}} to {{end}}</p>
+<a class="btn btn-outline-secondary btn-sm" href="{{ url_for('timesheets.import_csv') }}">Import Patriot CSV</a>
+<hr>
+<form method="post" action="{{ url_for('timesheets.submit') }}">
+  <input type="hidden" name="start" value="{{start}}">
+  <input type="hidden" name="end" value="{{end}}">
+  <div class="mb-3">
+    <label>Patriot totals (optional) format: YYYY-MM-DD:hours,YYYY-MM-DD:hours</label>
+    <input class="form-control" name="patriot_totals" placeholder="2025-08-01:8,2025-08-02:7.5">
+  </div>
+  <table class="table table-sm align-middle">
+    <thead><tr><th>Date</th><th>Project</th><th>Hours</th><th>Notes</th><th>Submitted</th></tr></thead>
+    <tbody>
+      {% for d in (range(0, (end-start).days + 1)) %}
+      {% set day = (start + loop.index0*0).__class__(start.year,start.month,start.day) + loop.index0*range(1).__class__ %}
+      {% endfor %}
+      {% for e in entries %}
+      <tr>
+        <td>{{ e.work_date }}</td>
+        <td>
+          {% if not e.is_submitted %}
+          <select class="form-select form-select-sm" name="project_id" data-date="{{e.work_date}}" data-entry="{{e.id}}">
+            <option value="">Company Task</option>
+            {% for p in projects %}
+            <option value="{{p.id}}" {% if e.project_id==p.id %}selected{% endif %}>{{p.name}}</option>
+            {% endfor %}
+          </select>
+          {% else %}
+            {{ e.project.name if e.project else "Company Task" }}
+          {% endif %}
+        </td>
+        <td>
+          {% if not e.is_submitted %}
+            <input class="form-control form-control-sm" name="hours" value="{{'%.2f'|format(e.hours)}}" data-date="{{e.work_date}}" data-entry="{{e.id}}">
+          {% else %}
+            {{ '%.2f'|format(e.hours) }}
+          {% endif %}
+        </td>
+        <td>
+          {% if not e.is_submitted %}
+            <input class="form-control form-control-sm" name="notes" value="{{e.notes}}" data-date="{{e.work_date}}" data-entry="{{e.id}}">
+          {% else %}
+            {{ e.notes }}
+          {% endif %}
+        </td>
+        <td>{{ "Yes" if e.is_submitted else "No" }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  <div class="d-flex gap-2">
+    <a class="btn btn-outline-primary" href="{{ url_for('timesheets.export_csv', start=start, end=end) }}">Download CSV</a>
+    <a class="btn btn-outline-primary" href="{{ url_for('timesheets.export_pdf', start=start, end=end) }}">Download PDF</a>
+    <button class="btn btn-success" type="submit">Submit Range</button>
+  </div>
+</form>
+<script>
+// very lightweight autosave: on blur of inputs
+document.querySelectorAll('input[name="hours"], input[name="notes"], select[name="project_id"]').forEach(el=>{
+  el.addEventListener('change', ev => {
+    const tr = ev.target.closest('tr');
+    const work_date = tr.querySelector('td').innerText.trim();
+    const hours = tr.querySelector('input[name="hours"]')?.value || 0;
+    const notes = tr.querySelector('input[name="notes"]')?.value || "";
+    const project_id = tr.querySelector('select[name="project_id"]')?.value || "";
+    const fd = new FormData();
+    fd.append('work_date', work_date);
+    fd.append('hours', hours);
+    fd.append('notes', notes);
+    fd.append('project_id', project_id);
+    fetch('/timesheets/save', {method:'POST', body:fd, headers: {'X-CSRFToken': '{{ csrf_token() }}'}});
+  });
+});
+</script>
+{% endblock %}

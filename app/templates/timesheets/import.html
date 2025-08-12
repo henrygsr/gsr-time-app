@@ -1,1 +1,8 @@
-
+{% extends 'base.html' %}
+{% block content %}
+<h3>Import Patriot CSV</h3>
+<form method="post" enctype="multipart/form-data">
+  <input type="file" name="file" class="form-control mb-3">
+  <button class="btn btn-primary">Upload</button>
+</form>
+{% endblock %}

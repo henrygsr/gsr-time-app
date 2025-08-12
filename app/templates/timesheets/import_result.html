@@ -1,0 +1,13 @@
+{% extends 'base.html' %}
+{% block content %}
+<h3>Imported Daily Totals</h3>
+<table class="table table-sm">
+  <thead><tr><th>Date</th><th>Hours</th></tr></thead>
+  <tbody>
+  {% for d,h in totals.items() %}
+    <tr><td>{{ d }}</td><td>{{ '%.2f'|format(h) }}</td></tr>
+  {% endfor %}
+  </tbody>
+</table>
+<p>Copy these into the "Patriot totals" box on the timesheet submit form as needed.</p>
+{% endblock %}
