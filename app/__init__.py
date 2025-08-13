@@ -25,17 +25,15 @@ def create_app():
     app.register_blueprint(reports_bp, url_prefix="/reports")
     app.register_blueprint(admin_bp, url_prefix="/admin")
 
-    # Make models available in templates where we reference Project.query
     @app.context_processor
     def inject_models():
         from .models.project import Project
         return dict(Project=Project)
 
-    with app.app_context():
-        db.create_all()
-        settings.ensure_global_settings()
+    # ❌ Removed db.create_all() and any startup DB writes.
+    # Alembic migrations will handle schema creation on first deploy.
 
     return app
 
-# 🔧 Expose the WSGI app so 'gunicorn app:app' works on Render
+# Keep this so 'gunicorn app:app' works on Render
 app = create_app()
