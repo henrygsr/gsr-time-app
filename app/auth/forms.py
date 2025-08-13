@@ -1,16 +1,24 @@
+# app/auth/forms.py
 from flask_wtf import FlaskForm
-from wtforms import StringField, PasswordField, BooleanField, SubmitField
-from wtforms.validators import DataRequired, Email, Length, EqualTo
-
-class RegisterForm(FlaskForm):
-    email = StringField('Email', validators=[DataRequired(), Email()])
-    username = StringField('Username', validators=[DataRequired(), Length(min=3, max=120)])
-    password = PasswordField('Password', validators=[DataRequired(), Length(min=6)])
-    confirm = PasswordField('Confirm Password', validators=[DataRequired(), EqualTo('password')])
-    submit = SubmitField('Create Account')
+from wtforms import StringField, SubmitField
+from wtforms.validators import DataRequired, Email, Length
 
 class LoginForm(FlaskForm):
-    username = StringField('Username', validators=[DataRequired()])
-    password = PasswordField('Password', validators=[DataRequired()])
-    remember = BooleanField('Remember me')
-    submit = SubmitField('Sign In')
+    email = StringField(
+        "Email",
+        validators=[DataRequired(), Email(), Length(max=255)],
+    )
+    submit = SubmitField("Sign In")
+
+class RegisterForm(FlaskForm):
+    first_name = StringField("First name", validators=[DataRequired(), Length(max=100)])
+    last_name = StringField("Last name", validators=[DataRequired(), Length(max=100)])
+    email = StringField(
+        "Work email",
+        validators=[DataRequired(), Email(), Length(max=255)],
+    )
+    submit = SubmitField("Create Account")
+
+# Compatibility alias so imports like `from .forms import RegistrationForm`
+# keep working even if routes expect `RegistrationForm`.
+RegistrationForm = RegisterForm
