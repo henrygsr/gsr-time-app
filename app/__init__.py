@@ -1,80 +1,61 @@
+# app/__init__.py
 import os
-from flask import Flask, render_template
-from .config import Config
-from .extensions import db, migrate, login_manager, csrf
-from .models import user, project, timeentry, wage, settings, changelog, assignments
-from .auth.routes import auth_bp
-from .main.routes import main_bp
-from .projects.routes import projects_bp
-from .timesheets.routes import timesheets_bp
-from .reports.routes import reports_bp
-from .admin import admin_bp
+from flask import Flask
+from flask_login import LoginManager
+from .models import db
 
+# Try to import your blueprints; if some don't exist, skip them gracefully.
+def _try_import_blueprint(path, attr):
+    try:
+        mod = __import__(path, fromlist=[attr])
+        return getattr(mod, attr)
+    except Exception:
+        return None
 
-def _bootstrap_roles():
-    """
-    Ensure there is at least one admin.
-    Optionally promote users based on env vars:
-      BOOTSTRAP_ADMIN_EMAILS=alice@gsrconstruct.com,bob@gsrconstruct.com
-      BOOTSTRAP_ACCOUNTING_EMAILS=carol@gsrconstruct.com
-    """
-    from .models.user import User  # local import to avoid circulars
-
-    changed = False
-
-    # Promote by env vars (if set)
-    admins_env = os.environ.get("BOOTSTRAP_ADMIN_EMAILS", "")
-    acct_env = os.environ.get("BOOTSTRAP_ACCOUNTING_EMAILS", "")
-    admin_emails = [e.strip().lower() for e in admins_env.split(",") if e.strip()]
-    acct_emails = [e.strip().lower() for e in acct_env.split(",") if e.strip()]
-
-    if admin_emails or acct_emails:
-        for u in User.query.all():
-            em = (u.email or "").lower()
-            if em in admin_emails and not u.is_admin:
-                u.is_admin = True
-                changed = True
-            if em in acct_emails and not u.is_accounting:
-                u.is_accounting = True
-                changed = True
-
-    # Ensure at least one admin exists; if none, promote the earliest user
-    if User.query.count() > 0 and User.query.filter_by(is_admin=True).count() == 0:
-        first_user = User.query.order_by(User.id.asc()).first()
-        first_user.is_admin = True
-        changed = True
-
-    if changed:
-        db.session.commit()
-
+login_manager = LoginManager()
 
 def create_app():
-    app = Flask(__name__)
-    app.config.from_object(Config)
+    app = Flask(__name__, template_folder="templates", static_folder="static")
 
+    # ---- Config ----
+    app.config["SECRET_KEY"] = os.getenv("SECRET_KEY", "dev-secret-key-change-me")
+    app.config["SQLALCHEMY_DATABASE_URI"] = os.getenv("SQLALCHEMY_DATABASE_URI", "sqlite:///app.db")
+    app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
+
+    # ---- Extensions ----
     db.init_app(app)
-    migrate.init_app(app, db)
     login_manager.init_app(app)
-    csrf.init_app(app)
 
-    app.register_blueprint(auth_bp)
-    app.register_blueprint(main_bp)
-    app.register_blueprint(projects_bp, url_prefix="/projects")
-    app.register_blueprint(timesheets_bp, url_prefix="/timesheets")
-    app.register_blueprint(reports_bp, url_prefix="/reports")
-    app.register_blueprint(admin_bp, url_prefix="/admin")
+    # If you have an auth blueprint providing /login, set it as the login view.
+    # Otherwise Flask-Login will redirect to /login by default if you create such a route.
+    login_manager.login_view = "auth.login"
 
-    @app.errorhandler(403)
-    def forbidden(_e):
-        return render_template("errors/403.html"), 403
+    # ---- Blueprints (register if present) ----
+    blueprints = [
+        ("app.main", "main_bp", None),                   # /
+        ("app.timesheets", "timesheets_bp", "/timesheets"),
+        ("app.projects", "projects_bp", "/projects"),
+        ("app.reports", "reports_bp", "/reports"),
+        ("app.admin", "admin_bp", "/admin"),
+        ("app.auth", "auth_bp", "/"),                    # optional auth package
+    ]
+    for module_path, bp_name, prefix in blueprints:
+        bp = _try_import_blueprint(module_path, bp_name)
+        if bp:
+            app.register_blueprint(bp, url_prefix=prefix)
 
-    with app.app_context():
-        db.create_all()
-        settings.ensure_global_settings()
-        _bootstrap_roles()
+    # ---- User loader for Flask-Login (adjust to your User model) ----
+    @login_manager.user_loader
+    def load_user(user_id: str):
+        try:
+            from .models import User  # imported here to avoid circular imports
+            return User.query.get(int(user_id))
+        except Exception:
+            return None
+
+    # ---- Health route (optional) ----
+    @app.get("/healthz")
+    def healthcheck():
+        return {"status": "ok"}, 200
 
     return app
-
-
-# also allow 'gunicorn app:app'
-app = create_app()
