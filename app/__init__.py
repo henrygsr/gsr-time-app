@@ -8,7 +8,7 @@ from .main.routes import main_bp
 from .projects.routes import projects_bp
 from .timesheets.routes import timesheets_bp
 from .reports.routes import reports_bp
-from .admin.routes import admin_bp
+from .admin import admin_bp
 
 
 def _bootstrap_roles():
