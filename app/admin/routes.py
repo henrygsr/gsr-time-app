@@ -10,7 +10,35 @@ from ..models.wage import WageRate
 from ..models.settings import GlobalSettings
 from ..models.assignments import PMProject
 from ..utils.changes import log_change
+# --- add below your existing imports in app/admin/routes.py ---
+from flask import render_template
+from flask_login import login_required
+from ..utils.security import admin_required
 
+@admin_bp.route("/")
+@login_required
+@admin_required
+def index():
+    """Admin landing page with quick stats & links."""
+    from ..models.project import Project
+    from ..models.user import User
+    from ..models.timeentry import TimeEntry
+
+    active_projects = Project.query.filter_by(is_archived=False).count()
+    archived_projects = Project.query.filter_by(is_archived=True).count()
+    users_count = User.query.count()
+    total_entries = TimeEntry.query.count()
+    submitted_entries = TimeEntry.query.filter_by(is_submitted=True).count()
+
+    return render_template(
+        "admin/index.html",
+        active_projects=active_projects,
+        archived_projects=archived_projects,
+        users_count=users_count,
+        total_entries=total_entries,
+        submitted_entries=submitted_entries,
+    )
+    
 admin_bp = Blueprint('admin', __name__)
 
 @admin_bp.route('/')
