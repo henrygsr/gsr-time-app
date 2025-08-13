@@ -18,8 +18,23 @@ def index():
     # Show last 14 days by default
     end = date.today()
     start = end - timedelta(days=13)
+
+    # Ensure there is a stub entry for each day in the range (so the UI can edit/autosave)
+    existing = (TimeEntry.query
+                .filter(TimeEntry.user_id == current_user.id,
+                        TimeEntry.work_date.between(start, end))
+                .all())
+    existing_by_date = {e.work_date for e in existing}
+    for i in range((end - start).days + 1):
+        d = start + timedelta(days=i)
+        if d not in existing_by_date:
+            db.session.add(TimeEntry(user_id=current_user.id, work_date=d, hours=0.0, notes=""))
+    if len(existing_by_date) != (end - start).days + 1:
+        db.session.commit()
+
     entries = (TimeEntry.query
-               .filter(TimeEntry.user_id==current_user.id, TimeEntry.work_date.between(start, end))
+               .filter(TimeEntry.user_id == current_user.id,
+                       TimeEntry.work_date.between(start, end))
                .order_by(TimeEntry.work_date.asc())
                .all())
     projects = Project.query.filter_by(is_archived=False).order_by(Project.name.asc()).all()
@@ -34,13 +49,15 @@ def save():
     hours = float(request.form.get('hours') or 0)
     notes = request.form.get('notes','')
     d = datetime.strptime(work_date, "%Y-%m-%d").date()
-    entry = (TimeEntry.query.filter_by(user_id=current_user.id, work_date=d, project_id=project_id).first()
-             if project_id else None)
+
+    # Find (or create) the entry for this date + project (company task when project_id is None)
+    entry = TimeEntry.query.filter_by(user_id=current_user.id, work_date=d, project_id=project_id).first()
     if not entry:
         entry = TimeEntry(user_id=current_user.id, work_date=d, project_id=project_id)
         db.session.add(entry)
     if entry.is_submitted:
         return jsonify({"ok": False, "message": "Entry is locked."}), 400
+
     entry.hours = hours
     entry.notes = notes
     log_change("timeentry", entry.id or "new", "autosave", {"date": work_date, "hours": hours})
