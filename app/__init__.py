@@ -1,5 +1,6 @@
 import os
 from flask import Flask, redirect, url_for
+from flask_wtf.csrf import generate_csrf
 from .extensions import db, migrate, login_manager, csrf
 from .models.settings import AppSetting, GlobalSettings
 
@@ -10,12 +11,10 @@ def create_app() -> Flask:
     # Basic config
     app.config["SECRET_KEY"] = os.environ.get("SECRET_KEY", "dev-secret-change-me")
 
-    # Database (Render sets DATABASE_URL). Make it SQLAlchemy 2.x friendly.
+    # Database URL
     db_uri = os.environ.get("DATABASE_URL", "sqlite:///db.sqlite3")
-    # Render/Heroku style fix
     if db_uri.startswith("postgres://"):
         db_uri = db_uri.replace("postgres://", "postgresql+psycopg://", 1)
-
     app.config["SQLALCHEMY_DATABASE_URI"] = db_uri
     app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 
@@ -24,6 +23,9 @@ def create_app() -> Flask:
     migrate.init_app(app, db)
     login_manager.init_app(app)
     csrf.init_app(app)
+
+    # Make csrf_token() available in ALL templates (including plain JS fetch headers)
+    app.jinja_env.globals["csrf_token"] = generate_csrf
 
     # Blueprints
     from .auth.routes import auth_bp
@@ -36,12 +38,12 @@ def create_app() -> Flask:
     app.register_blueprint(timesheets_bp)
     app.register_blueprint(admin_bp)
 
-    # Default route -> login
+    # Root -> login
     @app.route("/")
     def root():
         return redirect(url_for("auth.login"))
 
-    # Ensure schema + seed default settings on startup
+    # Ensure tables + default settings exist
     with app.app_context():
         db.create_all()
         _ensure_default_settings()
@@ -50,14 +52,12 @@ def create_app() -> Flask:
 
 
 def _ensure_default_settings() -> None:
-    """Create initial settings rows if they don't exist yet."""
-    # Global settings (used by costing for burden percent)
+    """Create minimal default rows if they don't exist yet."""
     gs = GlobalSettings.query.first()
     if not gs:
         gs = GlobalSettings(burden_percent=0.0)
         db.session.add(gs)
 
-    # App settings (used by Admin page & overtime logic)
     s = AppSetting.query.first()
     if not s:
         s = AppSetting(
