@@ -1,14 +1,13 @@
-# app/admin/__init__.py
 from flask import Blueprint
 
-# All admin routes live under /admin
+# Blueprint for all admin views
 admin_bp = Blueprint(
     "admin",
     __name__,
     url_prefix="/admin",
-    template_folder="templates",  # app/admin/templates/...
+    template_folder="templates",   # app/admin/templates
     static_folder=None,
 )
 
-# Import routes after the blueprint is created to avoid circular imports
+# Import routes after blueprint created so decorators can bind correctly
 from . import routes  # noqa: E402,F401
