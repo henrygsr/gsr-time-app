@@ -1,61 +1,58 @@
-# app/__init__.py
 import os
 from flask import Flask
-from flask_login import LoginManager
-from .models import db
+from .extensions import db, migrate, login_manager
 
-# Try to import your blueprints; if some don't exist, skip them gracefully.
-def _try_import_blueprint(path, attr):
-    try:
-        mod = __import__(path, fromlist=[attr])
-        return getattr(mod, attr)
-    except Exception:
-        return None
+# Configure Flask-Login
+login_manager.login_view = "auth.login"
+login_manager.login_message_category = "warning"
 
-login_manager = LoginManager()
+def create_app() -> Flask:
+    app = Flask(__name__, instance_relative_config=False)
 
-def create_app():
-    app = Flask(__name__, template_folder="templates", static_folder="static")
-
-    # ---- Config ----
-    app.config["SECRET_KEY"] = os.getenv("SECRET_KEY", "dev-secret-key-change-me")
-    app.config["SQLALCHEMY_DATABASE_URI"] = os.getenv("SQLALCHEMY_DATABASE_URI", "sqlite:///app.db")
+    # Core config
+    app.config["SECRET_KEY"] = os.environ.get("SECRET_KEY", "dev-secret")
+    app.config["SQLALCHEMY_DATABASE_URI"] = os.environ.get(
+        "SQLALCHEMY_DATABASE_URI", "sqlite:///app.db"
+    )
     app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 
-    # ---- Extensions ----
+    # Init extensions
     db.init_app(app)
+    migrate.init_app(app, db)
     login_manager.init_app(app)
 
-    # If you have an auth blueprint providing /login, set it as the login view.
-    # Otherwise Flask-Login will redirect to /login by default if you create such a route.
-    login_manager.login_view = "auth.login"
-
-    # ---- Blueprints (register if present) ----
-    blueprints = [
-        ("app.main", "main_bp", None),                   # /
-        ("app.timesheets", "timesheets_bp", "/timesheets"),
-        ("app.projects", "projects_bp", "/projects"),
-        ("app.reports", "reports_bp", "/reports"),
-        ("app.admin", "admin_bp", "/admin"),
-        ("app.auth", "auth_bp", "/"),                    # optional auth package
-    ]
-    for module_path, bp_name, prefix in blueprints:
-        bp = _try_import_blueprint(module_path, bp_name)
-        if bp:
-            app.register_blueprint(bp, url_prefix=prefix)
-
-    # ---- User loader for Flask-Login (adjust to your User model) ----
+    # User loader for Flask-Login
     @login_manager.user_loader
     def load_user(user_id: str):
+        from .models.user import User
         try:
-            from .models import User  # imported here to avoid circular imports
             return User.query.get(int(user_id))
         except Exception:
             return None
 
-    # ---- Health route (optional) ----
+    # Register blueprints (import inside to avoid circular imports)
+    from .auth.routes import auth_bp
+    from .main.routes import main_bp
+    from .timesheets.routes import timesheets_bp
+    from .projects.routes import projects_bp
+    from .reports.routes import reports_bp
+    try:
+        # If you added the admin dashboard blueprint
+        from .admin import admin_bp  # type: ignore
+    except Exception:
+        admin_bp = None
+
+    app.register_blueprint(auth_bp)  # /login, /register, /logout
+    app.register_blueprint(main_bp)  # /
+    app.register_blueprint(timesheets_bp, url_prefix="/timesheets")
+    app.register_blueprint(projects_bp,  url_prefix="/projects")
+    app.register_blueprint(reports_bp,   url_prefix="/reports")
+    if admin_bp:
+        app.register_blueprint(admin_bp, url_prefix="/admin")
+
+    # Health check (handy for Render)
     @app.get("/healthz")
-    def healthcheck():
+    def healthz():
         return {"status": "ok"}, 200
 
     return app
