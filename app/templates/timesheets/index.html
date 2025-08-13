@@ -11,12 +11,12 @@
     <label>Patriot totals (optional) format: YYYY-MM-DD:hours,YYYY-MM-DD:hours</label>
     <input class="form-control" name="patriot_totals" placeholder="2025-08-01:8,2025-08-02:7.5">
   </div>
+
   <table class="table table-sm align-middle">
-    <thead><tr><th>Date</th><th>Project</th><th>Hours</th><th>Notes</th><th>Submitted</th></tr></thead>
+    <thead>
+      <tr><th>Date</th><th>Project</th><th>Hours</th><th>Notes</th><th>Submitted</th></tr>
+    </thead>
     <tbody>
-      {% for d in (range(0, (end-start).days + 1)) %}
-      {% set day = (start + loop.index0*0).__class__(start.year,start.month,start.day) + loop.index0*range(1).__class__ %}
-      {% endfor %}
       {% for e in entries %}
       <tr>
         <td>{{ e.work_date }}</td>
@@ -34,14 +34,14 @@
         </td>
         <td>
           {% if not e.is_submitted %}
-            <input class="form-control form-control-sm" name="hours" value="{{'%.2f'|format(e.hours)}}" data-date="{{e.work_date}}" data-entry="{{e.id}}">
+            <input class="form-control form-control-sm" name="hours" value="{{'%.2f'|format(e.hours or 0)}}" data-date="{{e.work_date}}" data-entry="{{e.id}}">
           {% else %}
-            {{ '%.2f'|format(e.hours) }}
+            {{ '%.2f'|format(e.hours or 0) }}
           {% endif %}
         </td>
         <td>
           {% if not e.is_submitted %}
-            <input class="form-control form-control-sm" name="notes" value="{{e.notes}}" data-date="{{e.work_date}}" data-entry="{{e.id}}">
+            <input class="form-control form-control-sm" name="notes" value="{{e.notes or ''}}" data-date="{{e.work_date}}" data-entry="{{e.id}}">
           {% else %}
             {{ e.notes }}
           {% endif %}
@@ -51,14 +51,16 @@
       {% endfor %}
     </tbody>
   </table>
+
   <div class="d-flex gap-2">
     <a class="btn btn-outline-primary" href="{{ url_for('timesheets.export_csv', start=start, end=end) }}">Download CSV</a>
     <a class="btn btn-outline-primary" href="{{ url_for('timesheets.export_pdf', start=start, end=end) }}">Download PDF</a>
     <button class="btn btn-success" type="submit">Submit Range</button>
   </div>
 </form>
+
 <script>
-// very lightweight autosave: on blur of inputs
+// Very lightweight autosave: on change of inputs
 document.querySelectorAll('input[name="hours"], input[name="notes"], select[name="project_id"]').forEach(el=>{
   el.addEventListener('change', ev => {
     const tr = ev.target.closest('tr');
