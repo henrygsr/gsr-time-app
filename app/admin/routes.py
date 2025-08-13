@@ -1,71 +1,57 @@
-# app/admin/routes.py
-from flask import render_template, request, redirect, url_for, flash
-from flask_login import login_required, current_user
-
-from . import admin_bp  # defined in app/admin/__init__.py
-from ..utils.security import roles_required  # requires role check ("admin")
-from ..models import db, User, Project, WageRate
+from flask import Blueprint, render_template, request, redirect, url_for, flash
+from flask_login import login_required
+from ..utils.security import admin_required
+from ..extensions import db
 from ..models.settings import AppSetting, GlobalSettings
 
+admin_bp = Blueprint(
+    "admin",
+    __name__,
+    url_prefix="/admin",
+    template_folder="templates",
+    static_folder=None,
+)
 
-@admin_bp.route("/")
+
+@admin_bp.get("/")
 @login_required
-@roles_required("admin")
+@admin_required
 def dashboard():
-    users = User.query.order_by(User.created_at.desc()).limit(10).all() if hasattr(User, "created_at") else User.query.limit(10).all()
-    projects = Project.query.limit(10).all()
-    wages = WageRate.query.order_by(WageRate.effective_date.desc()).limit(10).all() if hasattr(WageRate, "effective_date") else WageRate.query.limit(10).all()
-
-    settings = {
-        "DAILY_TOLERANCE_MINUTES": GlobalSettings.daily_tolerance_minutes(),
-        "REPORT_BURDEN_PERCENT": GlobalSettings.report_burden_percent(),
-        "ALLOWED_EMAIL_DOMAIN": GlobalSettings.allowed_email_domain() or "",
-    }
-
+    app_settings = AppSetting.query.first()
+    global_settings = GlobalSettings.query.first()
     return render_template(
         "admin/dashboard.html",
-        users=users,
-        projects=projects,
-        wages=wages,
-        settings=settings,
+        app_settings=app_settings,
+        global_settings=global_settings,
     )
 
 
 @admin_bp.post("/update-settings")
 @login_required
-@roles_required("admin")
+@admin_required
 def update_settings():
-    # Names should match your dashboard form input names
-    tol = request.form.get("DAILY_TOLERANCE_MINUTES", "").strip()
-    burden = request.form.get("REPORT_BURDEN_PERCENT", "").strip()
-    domain = request.form.get("ALLOWED_EMAIL_DOMAIN", "").strip()
+    # App-level OT/DT settings
+    s = AppSetting.query.first()
+    if not s:
+        s = AppSetting()
+        db.session.add(s)
 
-    if tol:
-        AppSetting.set("DAILY_TOLERANCE_MINUTES", tol)
-    if burden:
-        AppSetting.set("REPORT_BURDEN_PERCENT", burden)
-    # Domain can be blank to allow any
-    AppSetting.set("ALLOWED_EMAIL_DOMAIN", domain)
+    s.overtime_threshold_hours_per_day = int(
+        request.form.get("overtime_threshold_hours_per_day", 8)
+    )
+    s.overtime_multiplier = float(request.form.get("overtime_multiplier", 1.5))
+    s.doubletime_threshold_hours_per_day = int(
+        request.form.get("doubletime_threshold_hours_per_day", 12)
+    )
+    s.doubletime_multiplier = float(request.form.get("doubletime_multiplier", 2.0))
 
+    # Burden percent (kept on GlobalSettings for compatibility with costing.py)
+    gs = GlobalSettings.query.first()
+    if not gs:
+        gs = GlobalSettings()
+        db.session.add(gs)
+    gs.burden_percent = float(request.form.get("burden_percent", 0))
+
+    db.session.commit()
     flash("Settings updated.", "success")
     return redirect(url_for("admin.dashboard"))
-
-
-# Optional: keep this stub since earlier logs referenced admin.add_wage
-@admin_bp.route("/wages/add", methods=["GET", "POST"])
-@login_required
-@roles_required("admin")
-def add_wage():
-    if request.method == "POST":
-        try:
-            rate = float(request.form.get("rate", "0") or "0")
-        except ValueError:
-            flash("Invalid rate.", "danger")
-            return redirect(url_for("admin.add_wage"))
-        eff = request.form.get("effective_date")
-        wage = WageRate(rate=rate, effective_date=eff) if eff else WageRate(rate=rate)
-        db.session.add(wage)
-        db.session.commit()
-        flash("Wage rate added.", "success")
-        return redirect(url_for("admin.dashboard"))
-    return render_template("admin/add_wage.html")
