@@ -1,23 +1,52 @@
 from functools import wraps
-from flask_login import current_user
 from flask import abort
+from flask_login import current_user
 
-def roles_required(*roles):
-    def decorator(f):
-        @wraps(f)
-        def wrapper(*args, **kwargs):
-            if not current_user.is_authenticated:
-                abort(401)
-            ok = True
-            for r in roles:
-                if r == "admin" and not current_user.is_admin:
-                    ok = False
-                if r == "pm" and not current_user.is_project_manager:
-                    ok = False
-                if r == "accounting" and not current_user.is_accounting:
-                    ok = False
-            if not ok:
-                abort(403)
-            return f(*args, **kwargs)
-        return wrapper
-    return decorator
+
+def _forbid():
+    # Consistent 403 without redirect loops (login gating should be added separately)
+    abort(403)
+
+
+def admin_required(f):
+    """
+    Gate a view to admins only.
+    Use together with @login_required, e.g.:
+
+        @login_required
+        @admin_required
+        def view(): ...
+    """
+    @wraps(f)
+    def wrapper(*args, **kwargs):
+        if not current_user.is_authenticated:
+            _forbid()
+        if not getattr(current_user, "is_admin", False):
+            _forbid()
+        return f(*args, **kwargs)
+    return wrapper
+
+
+# Optional helpers if you want to gate other roles elsewhere in the app.
+def accounting_required(f):
+    """Allow accounting or admin."""
+    @wraps(f)
+    def wrapper(*args, **kwargs):
+        if not current_user.is_authenticated:
+            _forbid()
+        if not (getattr(current_user, "is_accounting", False) or getattr(current_user, "is_admin", False)):
+            _forbid()
+        return f(*args, **kwargs)
+    return wrapper
+
+
+def project_manager_required(f):
+    """Allow project managers or admin."""
+    @wraps(f)
+    def wrapper(*args, **kwargs):
+        if not current_user.is_authenticated:
+            _forbid()
+        if not (getattr(current_user, "is_project_manager", False) or getattr(current_user, "is_admin", False)):
+            _forbid()
+        return f(*args, **kwargs)
+    return wrapper
