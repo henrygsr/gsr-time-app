@@ -1,0 +1,9 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="text-center py-5">
+  <h3>403 — Forbidden</h3>
+  <p>You don’t have permission to view this page.</p>
+  <p class="text-muted">If you believe this is a mistake, ask an admin to grant you access.</p>
+  <a class="btn btn-primary" href="{{ url_for('timesheets.index') }}">Back to Timesheets</a>
+</div>
+{% endblock %}
