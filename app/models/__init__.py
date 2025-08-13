@@ -6,7 +6,7 @@ from .project import Project
 from .timeentry import TimeEntry
 from .wage import WageRate
 from .assignments import PMProject
-from .settings import AppSetting
+from .settings import AppSetting, GlobalSettings  # noqa: F401
 from .changelog import ChangeLog
 
 __all__ = [
@@ -19,3 +19,4 @@ __all__ = [
     "AppSetting",
     "ChangeLog",
 ]
+
