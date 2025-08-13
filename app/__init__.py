@@ -1,58 +1,67 @@
+# app/__init__.py
 import os
 from flask import Flask
-from .extensions import db, migrate, login_manager
+from flask_sqlalchemy import SQLAlchemy
+from flask_migrate import Migrate
+from flask_login import LoginManager
+from flask_wtf import CSRFProtect
+from flask_wtf.csrf import generate_csrf
 
-# Configure Flask-Login
-login_manager.login_view = "auth.login"
-login_manager.login_message_category = "warning"
+from .models import db  # SQLAlchemy() instance defined in app/models/__init__.py
+
+migrate = Migrate()
+login_manager = LoginManager()
+csrf = CSRFProtect()
+
 
 def create_app() -> Flask:
-    app = Flask(__name__, instance_relative_config=False)
+    app = Flask(__name__)
 
-    # Core config
-    app.config["SECRET_KEY"] = os.environ.get("SECRET_KEY", "dev-secret")
-    app.config["SQLALCHEMY_DATABASE_URI"] = os.environ.get(
-        "SQLALCHEMY_DATABASE_URI", "sqlite:///app.db"
-    )
+    # ---- Config ----
+    app.config["SECRET_KEY"] = os.getenv("SECRET_KEY", "dev-secret-key")
+    database_url = os.getenv("DATABASE_URL", "sqlite:///app.db")
+    # Normalize old postgres URL format if present
+    if database_url.startswith("postgres://"):
+        database_url = database_url.replace("postgres://", "postgresql://", 1)
+    app.config["SQLALCHEMY_DATABASE_URI"] = database_url
     app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 
-    # Init extensions
+    # ---- Extensions ----
     db.init_app(app)
     migrate.init_app(app, db)
     login_manager.init_app(app)
+    login_manager.login_view = "auth.login"
+    csrf.init_app(app)
 
-    # User loader for Flask-Login
+    # Make csrf_token() available in ALL templates (even without a FlaskForm)
+    @app.context_processor
+    def inject_csrf_token():
+        return {"csrf_token": generate_csrf}
+
+    # ---- Blueprints ----
+    # Import inside factory to avoid circular imports
+    from .main.routes import main_bp
+    from .auth.routes import auth_bp
+    from .projects.routes import projects_bp
+    from .timesheets.routes import timesheets_bp
+    from .reports.routes import reports_bp
+    from .admin import admin_bp  # package defines blueprint and imports routes
+
+    app.register_blueprint(main_bp)
+    app.register_blueprint(auth_bp)
+    app.register_blueprint(projects_bp)
+    app.register_blueprint(timesheets_bp)
+    app.register_blueprint(reports_bp)
+    app.register_blueprint(admin_bp)
+
+    # ---- User loader ----
+    from .models import User
+
     @login_manager.user_loader
-    def load_user(user_id: str):
-        from .models.user import User
+    def load_user(user_id):
         try:
             return User.query.get(int(user_id))
         except Exception:
             return None
-
-    # Register blueprints (import inside to avoid circular imports)
-    from .auth.routes import auth_bp
-    from .main.routes import main_bp
-    from .timesheets.routes import timesheets_bp
-    from .projects.routes import projects_bp
-    from .reports.routes import reports_bp
-    try:
-        # If you added the admin dashboard blueprint
-        from .admin import admin_bp  # type: ignore
-    except Exception:
-        admin_bp = None
-
-    app.register_blueprint(auth_bp)  # /login, /register, /logout
-    app.register_blueprint(main_bp)  # /
-    app.register_blueprint(timesheets_bp, url_prefix="/timesheets")
-    app.register_blueprint(projects_bp,  url_prefix="/projects")
-    app.register_blueprint(reports_bp,   url_prefix="/reports")
-    if admin_bp:
-        app.register_blueprint(admin_bp, url_prefix="/admin")
-
-    # Health check (handy for Render)
-    @app.get("/healthz")
-    def healthz():
-        return {"status": "ok"}, 200
 
     return app
