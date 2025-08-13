@@ -1,35 +1,31 @@
 # app/models/__init__.py
+from __future__ import annotations
+
 from flask_sqlalchemy import SQLAlchemy
 
-# Single global db instance for the whole app
+# A single SQLAlchemy instance for the whole app.
+# In app/__init__.py you should call: db.init_app(app)
 db = SQLAlchemy()
 
-# ---- OPTIONAL RE-EXPORTS ----------------------------------------------------
-# If your models are split across files like app/models/user.py, project.py, etc.,
-# these imports will re-export them at app.models.* for convenience.
-# If a given file doesn't exist yet, the try/except prevents startup crashes.
-try:  # adjust names to match your repo layout
+# Re-export your model classes for convenient imports like:
+# from app.models import User, Project, WageRate, ProjectAssignment, ChangeLog
+try:
     from .user import User  # noqa: F401
 except Exception:
-    pass
+    # Leave import optional to avoid circulars during tooling/migrations.
+    User = None  # type: ignore[assignment]
+
 try:
-    from .project import Project  # noqa: F401
+    from .project import Project, ProjectAssignment  # noqa: F401
 except Exception:
-    pass
+    Project = ProjectAssignment = None  # type: ignore[assignment]
+
 try:
     from .wage import WageRate  # noqa: F401
 except Exception:
-    pass
-try:
-    from .project_assignment import ProjectAssignment  # noqa: F401
-except Exception:
-    pass
-try:
-    from .timesheet import TimesheetEntry  # noqa: F401
-except Exception:
-    pass
+    WageRate = None  # type: ignore[assignment]
+
 try:
     from .change_log import ChangeLog  # noqa: F401
 except Exception:
-    pass
-# -----------------------------------------------------------------------------
+    ChangeLog = None  # type: ignore[assignment]
