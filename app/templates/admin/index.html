@@ -1,0 +1,80 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="d-flex align-items-center justify-content-between mb-3">
+  <h3 class="mb-0">Admin Dashboard</h3>
+</div>
+
+<div class="row g-3 mb-4">
+  <div class="col-6 col-lg-3">
+    <div class="card shadow-sm">
+      <div class="card-body">
+        <div class="small text-muted">Active Projects</div>
+        <div class="h4 mb-0">{{ active_projects }}</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-6 col-lg-3">
+    <div class="card shadow-sm">
+      <div class="card-body">
+        <div class="small text-muted">Archived Projects</div>
+        <div class="h4 mb-0">{{ archived_projects }}</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-6 col-lg-3">
+    <div class="card shadow-sm">
+      <div class="card-body">
+        <div class="small text-muted">Users</div>
+        <div class="h4 mb-0">{{ users_count }}</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-6 col-lg-3">
+    <div class="card shadow-sm">
+      <div class="card-body">
+        <div class="small text-muted">Submitted Entries</div>
+        <div class="h4 mb-0">{{ submitted_entries }}/{{ total_entries }}</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="row g-3">
+  <div class="col-md-6">
+    <div class="card shadow-sm h-100">
+      <div class="card-body">
+        <h5 class="card-title">Projects</h5>
+        <p class="card-text">Create, edit, archive projects. Projects with time cannot be deleted.</p>
+        <a class="btn btn-primary" href="{{ url_for('projects.index') }}">Manage Projects</a>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-6">
+    <div class="card shadow-sm h-100">
+      <div class="card-body">
+        <h5 class="card-title">Wage Rates</h5>
+        <p class="card-text">Apply wage rates with effective dates and global burden %.</p>
+        <a class="btn btn-primary" href="{{ url_for('admin.add_wage') }}">Manage Wages</a>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-6">
+    <div class="card shadow-sm h-100">
+      <div class="card-body">
+        <h5 class="card-title">Reports</h5>
+        <p class="card-text">Filter by date range, employee, project; export CSV/PDF.</p>
+        <a class="btn btn-primary" href="{{ url_for('reports.index') }}">Open Reports</a>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-6">
+    <div class="card shadow-sm h-100">
+      <div class="card-body">
+        <h5 class="card-title">Timesheets</h5>
+        <p class="card-text">Review user submissions; unsubmit latest timesheet if needed.</p>
+        <a class="btn btn-outline-secondary" href="{{ url_for('timesheets.index') }}">Go to Timesheets</a>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
