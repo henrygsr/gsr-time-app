@@ -10,13 +10,13 @@ from .timesheets.routes import timesheets_bp
 from .reports.routes import reports_bp
 from .admin.routes import admin_bp
 
+
 def _bootstrap_roles():
     """
     Ensure there is at least one admin.
     Optionally promote users based on env vars:
       BOOTSTRAP_ADMIN_EMAILS=alice@gsrconstruct.com,bob@gsrconstruct.com
       BOOTSTRAP_ACCOUNTING_EMAILS=carol@gsrconstruct.com
-    Runs at startup inside app context; safe to no-op if already configured.
     """
     from .models.user import User  # local import to avoid circulars
 
@@ -47,6 +47,7 @@ def _bootstrap_roles():
     if changed:
         db.session.commit()
 
+
 def create_app():
     app = Flask(__name__)
     app.config.from_object(Config)
@@ -63,4 +64,17 @@ def create_app():
     app.register_blueprint(reports_bp, url_prefix="/reports")
     app.register_blueprint(admin_bp, url_prefix="/admin")
 
-    @app.errorhan
+    @app.errorhandler(403)
+    def forbidden(_e):
+        return render_template("errors/403.html"), 403
+
+    with app.app_context():
+        db.create_all()
+        settings.ensure_global_settings()
+        _bootstrap_roles()
+
+    return app
+
+
+# also allow 'gunicorn app:app'
+app = create_app()
