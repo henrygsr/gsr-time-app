@@ -1,39 +1,46 @@
-<!-- app/admin/templates/admin/dashboard.html -->
 {% extends 'base.html' %}
-
-{% block title %}Admin Dashboard · GSR Time{% endblock %}
-
 {% block content %}
-<div class="d-flex align-items-center justify-content-between mb-3">
-  <h1 class="h3 mb-0">Admin Dashboard</h1>
-</div>
+<h2 class="mb-3">Admin Settings</h2>
 
-<div class="row g-3">
-  <div class="col-md-4">
-    <div class="card h-100">
-      <div class="card-body">
-        <h5 class="card-title">Users</h5>
-        <p class="display-6">{{ totals.users }}</p>
-      </div>
+<form method="post" action="{{ url_for('admin.update_settings') }}" class="mb-4">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+  <div class="row g-3">
+    <div class="col-md-3">
+      <label class="form-label">Overtime threshold (hrs/day)</label>
+      <input type="number" min="0" step="1" class="form-control"
+             name="overtime_threshold_hours_per_day"
+             value="{{ (app_settings and app_settings.overtime_threshold_hours_per_day) or 8 }}">
+    </div>
+    <div class="col-md-3">
+      <label class="form-label">Overtime multiplier</label>
+      <input type="number" min="1" step="0.1" class="form-control"
+             name="overtime_multiplier"
+             value="{{ (app_settings and app_settings.overtime_multiplier) or 1.5 }}">
+    </div>
+    <div class="col-md-3">
+      <label class="form-label">Doubletime threshold (hrs/day)</label>
+      <input type="number" min="0" step="1" class="form-control"
+             name="doubletime_threshold_hours_per_day"
+             value="{{ (app_settings and app_settings.doubletime_threshold_hours_per_day) or 12 }}">
+    </div>
+    <div class="col-md-3">
+      <label class="form-label">Doubletime multiplier</label>
+      <input type="number" min="1" step="0.1" class="form-control"
+             name="doubletime_multiplier"
+             value="{{ (app_settings and app_settings.doubletime_multiplier) or 2.0 }}">
     </div>
   </div>
 
-  <div class="col-md-4">
-    <div class="card h-100">
-      <div class="card-body">
-        <h5 class="card-title">Projects</h5>
-        <p class="display-6">{{ totals.projects }}</p>
-      </div>
+  <div class="row g-3 mt-1">
+    <div class="col-md-3">
+      <label class="form-label">Burden percent (%)</label>
+      <input type="number" min="0" step="0.01" class="form-control"
+             name="burden_percent"
+             value="{{ (global_settings and global_settings.burden_percent) or 0 }}">
     </div>
   </div>
 
-  <div class="col-md-4">
-    <div class="card h-100">
-      <div class="card-body">
-        <h5 class="card-title">Wage Rates</h5>
-        <p class="display-6">{{ totals.wage_rates }}</p>
-      </div>
-    </div>
-  </div>
-</div>
+  <button class="btn btn-primary mt-3" type="submit">Save Settings</button>
+</form>
 {% endblock %}
